@@ -45,7 +45,7 @@ export default function MapView({
   polylines = [],
 }) {
   const { isLoaded, loadError } = useJsApiLoader({
-    id: "gridpulse-google-map",
+    id: "linecut-google-map",
     googleMapsApiKey: apiKey || "",
   });
   const [map, setMap] = useState(null);
@@ -55,31 +55,28 @@ export default function MapView({
 
   if (!apiKey) {
     return (
-      <div
-        className="flex items-center justify-center text-center rounded-lg p-6 text-sm"
-        style={{ background: "#16212C", border: "1px solid #2A3A48", color: "#8FA1B0", minHeight: 320 }}
-      >
+      <div className="w-full h-full flex items-center justify-center text-center p-6 text-sm" style={{ background: "#0E1620", color: "#8FA1B0" }}>
         Add a Google Maps API key (VITE_GOOGLE_MAPS_API_KEY in .env) to show the live map.
       </div>
     );
   }
   if (loadError) {
     return (
-      <div className="flex items-center justify-center rounded-lg p-6 text-sm" style={{ background: "#16212C", color: "#E4572E", minHeight: 320 }}>
+      <div className="w-full h-full flex items-center justify-center p-6 text-sm" style={{ background: "#0E1620", color: "#E4572E" }}>
         Couldn't load Google Maps — check that your API key is valid and the Maps JavaScript API is enabled.
       </div>
     );
   }
   if (!isLoaded) {
     return (
-      <div className="flex items-center justify-center rounded-lg p-6 text-sm" style={{ background: "#16212C", color: "#8FA1B0", minHeight: 320 }}>
+      <div className="w-full h-full flex items-center justify-center p-6 text-sm" style={{ background: "#0E1620", color: "#8FA1B0" }}>
         Loading map…
       </div>
     );
   }
 
   return (
-    <div className="rounded-lg overflow-hidden" style={{ height: 420, border: "1px solid #2A3A48" }}>
+    <div className="w-full h-full">
       <GoogleMap
         mapContainerStyle={CONTAINER_STYLE}
         center={center}

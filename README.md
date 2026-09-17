@@ -1,6 +1,6 @@
-# GridPulse
+# LineCut
 
-A power-cut reporting and feeder-line mapping site. Residents swipe a bar to report an outage; KSEB sees which line feeds each house — plotted on a real Google Map — and can mark planned maintenance.
+A power-cut reporting and feeder-line mapping site, laid out flosm-style: the map fills the whole screen, and a slide-out layer panel (Layers / Manage) lets KSEB switch feeders and outage overlays on and off, the way flosm.org switches its OSM thematic layers. Residents swipe a bar to report an outage; KSEB sees which line feeds each house — plotted on a real Google Map — and can mark planned maintenance.
 
 ## Get a Google Maps API key
 
@@ -9,7 +9,7 @@ The map is real Google Maps tiles (the same building outlines you see zoomed int
 1. Go to [console.cloud.google.com](https://console.cloud.google.com), create a project (or use an existing one).
 2. Under **APIs & Services → Library**, enable the **Maps JavaScript API**.
 3. Under **APIs & Services → Credentials**, create an API key.
-4. Click the key and restrict it to **HTTP referrers**, adding `localhost:5173/*` for local dev and your Vercel domain once you have one (e.g. `gridpulse.vercel.app/*`). This stops anyone else from using your key.
+4. Click the key and restrict it to **HTTP referrers**, adding `localhost:5173/*` for local dev and your Vercel domain once you have one (e.g. `linecut.vercel.app/*`). This stops anyone else from using your key.
 5. Google's free tier covers a generous number of map loads per month; beyond that it's billed, so keep the key restricted.
 
 ## Run it locally
@@ -21,12 +21,12 @@ cp .env.example .env
 npm run dev
 ```
 
-Opens at `http://localhost:5173`. On the KSEB view, use **Add / move houses** to click anywhere on the real map and drop a house pin exactly on the building you mean, or drag existing pins onto place.
+Opens at `http://localhost:5173`. Switch to the **KSEB** view (top right) to see the layer panel: toggle feeder lines and outage/maintenance overlays on the **Layers** tab, or switch to **Manage** to select houses, schedule maintenance, and use **Add / move houses** to click anywhere on the real map and drop a pin exactly on the building you mean.
 
 ## Put it on GitHub
 
 ```bash
-cd gridpulse
+cd linecut
 git init
 git add .
 git commit -m "Initial commit"
@@ -35,7 +35,7 @@ git commit -m "Initial commit"
 Then create a new empty repository on GitHub (no README/license, so it stays empty), and push:
 
 ```bash
-git remote add origin https://github.com/<your-username>/gridpulse.git
+git remote add origin https://github.com/<your-username>/linecut.git
 git branch -M main
 git push -u origin main
 ```
@@ -43,10 +43,10 @@ git push -u origin main
 ## Deploy on Vercel
 
 1. Go to [vercel.com](https://vercel.com) and sign in with your GitHub account.
-2. Click **Add New → Project**, and pick the `gridpulse` repo you just pushed.
+2. Click **Add New → Project**, and pick the `linecut` repo you just pushed.
 3. Vercel auto-detects Vite — leave the defaults (Build Command: `npm run build`, Output Directory: `dist`).
 4. Before deploying, open **Environment Variables** and add `VITE_GOOGLE_MAPS_API_KEY` with your key, then click **Deploy**.
-5. After a minute you'll get a live URL like `gridpulse.vercel.app`. Go back to your key's HTTP referrer restrictions in Google Cloud Console and add that domain. Every future push to `main` redeploys automatically.
+5. After a minute you'll get a live URL like `linecut.vercel.app`. Go back to your key's HTTP referrer restrictions in Google Cloud Console and add that domain. Every future push to `main` redeploys automatically.
 
 ## Notes
 
