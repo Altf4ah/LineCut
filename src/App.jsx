@@ -1,5 +1,8 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Zap, Camera, X, Wrench, Radio, MapPin, Clock, CheckCircle2, AlertTriangle, ChevronRight } from "lucide-react";
+import React, { useState, useRef, useEffect } from "react";
+import { Zap, Camera, X, Wrench, Radio, Clock, CheckCircle2, AlertTriangle, ChevronRight, Plus } from "lucide-react";
+import MapView from "./MapView.jsx";
+
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
 // ---------- palette ----------
 const COLORS = {
@@ -9,13 +12,11 @@ const COLORS = {
   line: "#2A3A48",
   text: "#E7EDF3",
   textDim: "#8FA1B0",
-  normal: "#3D4C59",
   normalFill: "#E7EDF3",
   red: "#E4572E",
   redDim: "#5A2F22",
   yellow: "#F2B134",
   yellowDim: "#4F3F1C",
-  green: "#4C9A6A",
   accent: "#4A90D9",
 };
 
@@ -25,18 +26,21 @@ const LINES = [
   { id: "L3", name: "Feeder C · Elamkulam", color: "#2E9188" },
 ];
 
-const INITIAL_HOUSES = [
-  { id: "h1", name: "Anand Bhavan", lineId: "L1", x: 22, y: 72, status: "normal" },
-  { id: "h2", name: "Green Villa", lineId: "L1", x: 36, y: 54, status: "normal" },
-  { id: "h3", name: "Lakeview House", lineId: "L1", x: 14, y: 38, status: "normal" },
-  { id: "h4", name: "Sunrise Cottage", lineId: "L2", x: 55, y: 66, status: "normal" },
-  { id: "h5", name: "Palm Residency", lineId: "L2", x: 70, y: 50, status: "yellow", maintenanceTime: "2:00 PM – 4:00 PM, Today" },
-  { id: "h6", name: "Riverside House", lineId: "L2", x: 60, y: 30, status: "normal" },
-  { id: "h7", name: "Hilltop Manor", lineId: "L3", x: 86, y: 58, status: "normal" },
-  { id: "h8", name: "Blue Nest", lineId: "L3", x: 80, y: 34, status: "normal" },
-];
+// Default demo location — drag the pins onto your own street once the map loads,
+// or use "Add house" to drop new ones exactly where you need them.
+const CENTER = { lat: 9.9675, lng: 76.294 };
+const SUBSTATION = { lat: 9.9693, lng: 76.2942 };
 
-const SUBSTATION = { x: 50, y: 8 };
+const INITIAL_HOUSES = [
+  { id: "h1", name: "Anand Bhavan", lineId: "L1", lat: 9.9684, lng: 76.2925, status: "normal" },
+  { id: "h2", name: "Green Villa", lineId: "L1", lat: 9.9677, lng: 76.2934, status: "normal" },
+  { id: "h3", name: "Lakeview House", lineId: "L1", lat: 9.9665, lng: 76.2922, status: "normal" },
+  { id: "h4", name: "Sunrise Cottage", lineId: "L2", lat: 9.9679, lng: 76.2952, status: "normal" },
+  { id: "h5", name: "Palm Residency", lineId: "L2", lat: 9.967, lng: 76.2962, status: "yellow", maintenanceTime: "2:00 PM – 4:00 PM, Today" },
+  { id: "h6", name: "Riverside House", lineId: "L2", lat: 9.9661, lng: 76.295, status: "normal" },
+  { id: "h7", name: "Hilltop Manor", lineId: "L3", lat: 9.9681, lng: 76.2974, status: "normal" },
+  { id: "h8", name: "Blue Nest", lineId: "L3", lat: 9.9664, lng: 76.2972, status: "normal" },
+];
 
 function lineColor(id) {
   return LINES.find((l) => l.id === id)?.color || COLORS.line;
@@ -50,107 +54,29 @@ function statusFill(status) {
   return COLORS.normalFill;
 }
 
-// ---------- Map ----------
-function GridMap({ houses, colorMode, selectedIds = [], onHouseClick, highlightHouseId }) {
-  return (
-    <div
-      style={{ background: COLORS.bg, border: `1px solid ${COLORS.line}` }}
-      className="relative w-full rounded-lg overflow-hidden"
-    >
-      <svg viewBox="0 0 100 85" className="w-full h-auto block" style={{ minHeight: 260 }}>
-        {/* feeder lines */}
-        {houses.map((h) => (
-          <line
-            key={"ln-" + h.id}
-            x1={SUBSTATION.x}
-            y1={SUBSTATION.y}
-            x2={h.x}
-            y2={h.y}
-            stroke={lineColor(h.lineId)}
-            strokeWidth={highlightHouseId === h.id ? 0.7 : 0.4}
-            opacity={colorMode === "line" ? 0.9 : 0.35}
-          />
-        ))}
-        {/* substation node */}
-        <g>
-          <circle cx={SUBSTATION.x} cy={SUBSTATION.y} r={2.6} fill={COLORS.panelAlt} stroke={COLORS.textDim} strokeWidth={0.3} />
-          <circle cx={SUBSTATION.x} cy={SUBSTATION.y} r={1} fill={COLORS.accent} />
-        </g>
-        <text x={SUBSTATION.x} y={SUBSTATION.y - 3.5} fontSize="2.4" fill={COLORS.textDim} textAnchor="middle" fontFamily="ui-monospace, monospace">
-          33kV SUBSTATION
-        </text>
-
-        {/* houses */}
-        {houses.map((h) => {
-          const isSelected = selectedIds.includes(h.id);
-          const fill = colorMode === "line" ? (h.status === "normal" ? "#0000" : statusFill(h.status)) : statusFill(h.status);
-          const strokeColor = colorMode === "line" ? lineColor(h.lineId) : isSelected ? COLORS.accent : "#00000030";
-          return (
-            <g
-              key={h.id}
-              transform={`translate(${h.x} ${h.y})`}
-              onClick={() => onHouseClick && onHouseClick(h)}
-              style={{ cursor: onHouseClick ? "pointer" : "default" }}
-            >
-              {highlightHouseId === h.id && (
-                <circle r={4.2} fill="none" stroke={COLORS.accent} strokeWidth={0.4}>
-                  <animate attributeName="r" values="3;4.6;3" dur="1.8s" repeatCount="indefinite" />
-                  <animate attributeName="opacity" values="0.9;0.2;0.9" dur="1.8s" repeatCount="indefinite" />
-                </circle>
-              )}
-              <rect
-                x={-2.4}
-                y={-2.4}
-                width={4.8}
-                height={4.8}
-                rx={0.6}
-                fill={colorMode === "line" ? (h.status === "normal" ? COLORS.normalFill : fill) : fill}
-                stroke={strokeColor}
-                strokeWidth={isSelected ? 0.6 : 0.35}
-              />
-              {h.status === "yellow" && (
-                <text x={0} y={0.9} fontSize="3" textAnchor="middle" fill="#4F3F1C">⚠</text>
-              )}
-            </g>
-          );
-        })}
-      </svg>
-    </div>
-  );
-}
-
 // ---------- Swipe-to-report bar ----------
 function SwipeBar({ reported, onReport, onRestore, disabled }) {
   const trackRef = useRef(null);
-  const [drag, setDrag] = useState(0); // 0..1
+  const [drag, setDrag] = useState(0);
   const [dragging, setDragging] = useState(false);
 
-  const handleMove = useCallback((clientX) => {
+  const handleMove = (clientX) => {
     const track = trackRef.current;
     if (!track) return;
     const rect = track.getBoundingClientRect();
     const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
     setDrag(ratio);
-  }, []);
+  };
 
-  const onPointerDown = (e) => {
-    if (disabled) return;
-    setDragging(true);
-    handleMove(e.clientX);
-  };
-  const onPointerMove = (e) => {
-    if (!dragging) return;
-    handleMove(e.clientX);
-  };
   const commit = () => {
-    if (!dragging) return;
     setDragging(false);
-    if (drag > 0.82) {
-      setDrag(1);
-      onReport();
-    } else {
-      setDrag(0);
-    }
+    setDrag((d) => {
+      if (d > 0.82) {
+        onReport();
+        return 1;
+      }
+      return 0;
+    });
   };
 
   useEffect(() => {
@@ -168,7 +94,7 @@ function SwipeBar({ reported, onReport, onRestore, disabled }) {
       window.removeEventListener("touchend", up);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dragging, drag]);
+  }, [dragging]);
 
   if (reported) {
     return (
@@ -181,10 +107,7 @@ function SwipeBar({ reported, onReport, onRestore, disabled }) {
           <CheckCircle2 size={16} color={COLORS.red} />
           <span className="text-sm">Power cut reported</span>
         </span>
-        <span
-          className="rounded-full flex items-center justify-center"
-          style={{ background: COLORS.red, width: 34, height: 34, flexShrink: 0 }}
-        >
+        <span className="rounded-full flex items-center justify-center" style={{ background: COLORS.red, width: 34, height: 34, flexShrink: 0 }}>
           <X size={16} color="#fff" />
         </span>
       </button>
@@ -195,19 +118,10 @@ function SwipeBar({ reported, onReport, onRestore, disabled }) {
   return (
     <div
       ref={trackRef}
-      onMouseDown={onPointerDown}
-      onTouchStart={(e) => {
-        setDragging(true);
-        handleMove(e.touches[0].clientX);
-      }}
+      onMouseDown={(e) => { if (!disabled) { setDragging(true); handleMove(e.clientX); } }}
+      onTouchStart={(e) => { if (!disabled) { setDragging(true); handleMove(e.touches[0].clientX); } }}
       className="relative w-full rounded-full select-none"
-      style={{
-        background: COLORS.panelAlt,
-        border: `1px solid ${COLORS.line}`,
-        height: 46,
-        opacity: disabled ? 0.5 : 1,
-        touchAction: "none",
-      }}
+      style={{ background: COLORS.panelAlt, border: `1px solid ${COLORS.line}`, height: 46, opacity: disabled ? 0.5 : 1, touchAction: "none" }}
     >
       <div
         className="absolute inset-y-0 left-0 rounded-full"
@@ -220,13 +134,7 @@ function SwipeBar({ reported, onReport, onRestore, disabled }) {
       </div>
       <div
         className="absolute top-0.5 rounded-full flex items-center justify-center"
-        style={{
-          left: `calc(${pct}% - ${pct > 2 ? 17 : 1}px)`,
-          width: 38,
-          height: 38,
-          background: COLORS.red,
-          transition: dragging ? "none" : "left 0.2s ease",
-        }}
+        style={{ left: `calc(${pct}% - ${pct > 2 ? 17 : 1}px)`, width: 38, height: 38, background: COLORS.red, transition: dragging ? "none" : "left 0.2s ease" }}
       >
         <ChevronRight size={18} color="#fff" />
       </div>
@@ -237,24 +145,23 @@ function SwipeBar({ reported, onReport, onRestore, disabled }) {
 // ---------- Camera capture ----------
 function CameraModal({ onClose, onCapture }) {
   const videoRef = useRef(null);
-  const [stream, setStream] = useState(null);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     let active = true;
+    let localStream = null;
     navigator.mediaDevices
       ?.getUserMedia({ video: { facingMode: "environment" } })
       .then((s) => {
         if (!active) return;
-        setStream(s);
+        localStream = s;
         if (videoRef.current) videoRef.current.srcObject = s;
       })
       .catch(() => setError("Camera unavailable — upload a photo instead."));
     return () => {
       active = false;
-      stream?.getTracks().forEach((t) => t.stop());
+      localStream?.getTracks().forEach((t) => t.stop());
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const snap = () => {
@@ -307,6 +214,14 @@ function CameraModal({ onClose, onCapture }) {
   );
 }
 
+function feederPolylines(houses, colorMode) {
+  return houses.map((h) => ({
+    path: [SUBSTATION, { lat: h.lat, lng: h.lng }],
+    color: lineColor(h.lineId),
+    opacity: colorMode === "line" ? 0.85 : 0.25,
+  }));
+}
+
 // ---------- Resident View ----------
 function ResidentView({ houses, residentId, setResidentId, onReport, onRestore, onAddIncident }) {
   const house = houses.find((h) => h.id === residentId);
@@ -328,7 +243,15 @@ function ResidentView({ houses, residentId, setResidentId, onReport, onRestore, 
         </select>
       </div>
 
-      <GridMap houses={houses} colorMode="status" highlightHouseId={residentId} />
+      <MapView
+        apiKey={GOOGLE_MAPS_API_KEY}
+        center={{ lat: house.lat, lng: house.lng }}
+        zoom={19}
+        houses={[house]}
+        substation={null}
+        getColor={(h) => statusFill(h.status)}
+        selectedIds={[house.id]}
+      />
 
       <div className="mt-4 rounded-xl p-4" style={{ background: COLORS.panel, border: `1px solid ${COLORS.line}` }}>
         <div className="flex items-center justify-between mb-1">
@@ -383,29 +306,25 @@ function ResidentView({ houses, residentId, setResidentId, onReport, onRestore, 
       </div>
 
       {showCamera && (
-        <CameraModal
-          onClose={() => setShowCamera(false)}
-          onCapture={(dataUrl) => {
-            onAddIncident(house.id, dataUrl);
-            setShowCamera(false);
-          }}
-        />
+        <CameraModal onClose={() => setShowCamera(false)} onCapture={(dataUrl) => { onAddIncident(house.id, dataUrl); setShowCamera(false); }} />
       )}
     </div>
   );
 }
 
 // ---------- KSEB View ----------
-function KsebView({ houses, onSchedule, onClear, onSimulateDevice }) {
+function KsebView({ houses, onSchedule, onClear, onSimulateDevice, onAddHouse, onMoveHouse }) {
   const [colorMode, setColorMode] = useState("status");
   const [selected, setSelected] = useState([]);
   const [scheduling, setScheduling] = useState(false);
   const [timeInput, setTimeInput] = useState("");
   const [viewingIncidentsOf, setViewingIncidentsOf] = useState(null);
+  const [editMode, setEditMode] = useState(false);
+  const [pendingPoint, setPendingPoint] = useState(null);
+  const [newName, setNewName] = useState("");
+  const [newLine, setNewLine] = useState(LINES[0].id);
 
-  const toggleSelect = (h) => {
-    setSelected((s) => (s.includes(h.id) ? s.filter((id) => id !== h.id) : [...s, h.id]));
-  };
+  const toggleSelect = (h) => setSelected((s) => (s.includes(h.id) ? s.filter((id) => id !== h.id) : [...s, h.id]));
 
   const redCount = houses.filter((h) => h.status === "red").length;
   const yellowCount = houses.filter((h) => h.status === "yellow").length;
@@ -423,7 +342,7 @@ function KsebView({ houses, onSchedule, onClear, onSimulateDevice }) {
 
       <div className="flex flex-col md:flex-row gap-4">
         <div className="md:w-3/5">
-          <div className="flex gap-2 mb-2">
+          <div className="flex gap-2 mb-2 flex-wrap">
             {["status", "line"].map((m) => (
               <button
                 key={m}
@@ -438,8 +357,77 @@ function KsebView({ houses, onSchedule, onClear, onSimulateDevice }) {
                 {m === "status" ? "Power status" : "Feeder lines"}
               </button>
             ))}
+            <button
+              onClick={() => { setEditMode((v) => !v); setPendingPoint(null); }}
+              className="text-xs px-3 py-1.5 rounded-full flex items-center gap-1"
+              style={{
+                background: editMode ? COLORS.yellow : COLORS.panelAlt,
+                color: editMode ? "#3A2E10" : COLORS.textDim,
+                border: `1px solid ${editMode ? COLORS.yellow : COLORS.line}`,
+              }}
+            >
+              <Plus size={12} /> {editMode ? "Done editing" : "Add / move houses"}
+            </button>
           </div>
-          <GridMap houses={houses} colorMode={colorMode} selectedIds={selected} onHouseClick={toggleSelect} />
+
+          <MapView
+            apiKey={GOOGLE_MAPS_API_KEY}
+            center={SUBSTATION}
+            zoom={18}
+            houses={houses}
+            substation={SUBSTATION}
+            getColor={(h) => (colorMode === "line" ? (h.status === "normal" ? COLORS.normalFill : statusFill(h.status)) : statusFill(h.status))}
+            selectedIds={selected}
+            onHouseClick={editMode ? undefined : toggleSelect}
+            editable={editMode}
+            onMapClick={(pt) => setPendingPoint(pt)}
+            onHouseDrag={onMoveHouse}
+            polylines={feederPolylines(houses, colorMode)}
+          />
+
+          {editMode && (
+            <p className="text-xs mt-2" style={{ color: COLORS.textDim }}>
+              Drag a house onto the exact building you see on the map, or click anywhere on the map to drop a new house pin there.
+            </p>
+          )}
+
+          {pendingPoint && (
+            <div className="mt-2 rounded-lg p-3" style={{ background: COLORS.panel, border: `1px solid ${COLORS.line}` }}>
+              <p className="text-xs mb-2" style={{ color: COLORS.textDim }}>New house at {pendingPoint.lat.toFixed(5)}, {pendingPoint.lng.toFixed(5)}</p>
+              <div className="flex gap-2 mb-2">
+                <input
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="House name"
+                  className="flex-1 rounded-lg px-3 py-2 text-sm"
+                  style={{ background: COLORS.panelAlt, color: COLORS.text, border: `1px solid ${COLORS.line}` }}
+                />
+                <select
+                  value={newLine}
+                  onChange={(e) => setNewLine(e.target.value)}
+                  className="rounded-lg px-2 py-2 text-sm"
+                  style={{ background: COLORS.panelAlt, color: COLORS.text, border: `1px solid ${COLORS.line}` }}
+                >
+                  {LINES.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+                </select>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    if (!newName.trim()) return;
+                    onAddHouse({ id: `h${Date.now()}`, name: newName.trim(), lineId: newLine, ...pendingPoint, status: "normal", incidents: [] });
+                    setPendingPoint(null);
+                    setNewName("");
+                  }}
+                  className="flex-1 rounded-lg py-2 text-xs font-medium"
+                  style={{ background: COLORS.accent, color: "#fff" }}
+                >
+                  Add house
+                </button>
+                <button onClick={() => setPendingPoint(null)} className="rounded-lg py-2 px-3 text-xs" style={{ color: COLORS.textDim }}>Cancel</button>
+              </div>
+            </div>
+          )}
 
           <div className="mt-2 flex flex-wrap gap-3 text-xs" style={{ color: COLORS.textDim }}>
             {colorMode === "line"
@@ -474,10 +462,7 @@ function KsebView({ houses, onSchedule, onClear, onSimulateDevice }) {
               </button>
               <button
                 disabled={!selected.length}
-                onClick={() => {
-                  onClear(selected);
-                  setSelected([]);
-                }}
+                onClick={() => { onClear(selected); setSelected([]); }}
                 className="flex-1 rounded-lg py-2 text-xs font-medium disabled:opacity-40"
                 style={{ background: COLORS.panelAlt, color: COLORS.text, border: `1px solid ${COLORS.line}` }}
               >
@@ -509,9 +494,7 @@ function KsebView({ houses, onSchedule, onClear, onSimulateDevice }) {
                   >
                     Confirm
                   </button>
-                  <button onClick={() => setScheduling(false)} className="rounded-lg py-2 px-3 text-xs" style={{ color: COLORS.textDim }}>
-                    Cancel
-                  </button>
+                  <button onClick={() => setScheduling(false)} className="rounded-lg py-2 px-3 text-xs" style={{ color: COLORS.textDim }}>Cancel</button>
                 </div>
               </div>
             )}
@@ -541,12 +524,7 @@ function KsebView({ houses, onSchedule, onClear, onSimulateDevice }) {
                         </button>
                       )}
                       {h.status === "red" && (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); onSimulateDevice(h.id); }}
-                          title="Device already flagged this — demo only"
-                          className="text-xs"
-                          style={{ color: COLORS.textDim }}
-                        >
+                        <button onClick={(e) => { e.stopPropagation(); onSimulateDevice(h.id); }} title="Device already flagged this — demo only" style={{ color: COLORS.textDim }}>
                           <Radio size={13} />
                         </button>
                       )}
@@ -595,10 +573,7 @@ export default function App() {
           <span className="text-lg" style={{ color: COLORS.text }}>GridPulse</span>
         </div>
         <div className="flex rounded-full p-0.5" style={{ background: COLORS.panelAlt, border: `1px solid ${COLORS.line}` }}>
-          {[
-            { id: "resident", label: "Resident" },
-            { id: "kseb", label: "KSEB Control Room" },
-          ].map((t) => (
+          {[{ id: "resident", label: "Resident" }, { id: "kseb", label: "KSEB Control Room" }].map((t) => (
             <button
               key={t.id}
               onClick={() => setView(t.id)}
@@ -618,9 +593,7 @@ export default function App() {
           setResidentId={setResidentId}
           onReport={(id) => updateHouse(id, { status: "red" })}
           onRestore={(id) => updateHouse(id, { status: "normal" })}
-          onAddIncident={(id, photo) =>
-            setHouses((hs) => hs.map((h) => (h.id === id ? { ...h, incidents: [...(h.incidents || []), photo] } : h)))
-          }
+          onAddIncident={(id, photo) => setHouses((hs) => hs.map((h) => (h.id === id ? { ...h, incidents: [...(h.incidents || []), photo] } : h)))}
         />
       ) : (
         <KsebView
@@ -628,6 +601,8 @@ export default function App() {
           onSchedule={(ids, time) => updateMany(ids, { status: "yellow", maintenanceTime: time })}
           onClear={(ids) => updateMany(ids, { status: "normal", maintenanceTime: undefined })}
           onSimulateDevice={(id) => updateHouse(id, { status: "red" })}
+          onAddHouse={(house) => setHouses((hs) => [...hs, house])}
+          onMoveHouse={(id, pos) => updateHouse(id, pos)}
         />
       )}
     </div>
