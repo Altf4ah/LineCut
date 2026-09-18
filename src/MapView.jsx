@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { GoogleMap, Marker, Polyline, useJsApiLoader } from "@react-google-maps/api";
+import { GoogleMap, Marker, Polygon, useJsApiLoader } from "@react-google-maps/api";
 
 const MAP_STYLE = [
   { featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] },
@@ -13,19 +13,8 @@ function squareIcon(color, selected) {
     path: "M -8,-8 L 8,-8 L 8,8 L -8,8 Z",
     fillColor: color,
     fillOpacity: 1,
-    strokeColor: selected ? "#4A90D9" : "#00000055",
+    strokeColor: selected ? "#1D6FA5" : "#00000055",
     strokeWeight: selected ? 2.5 : 1,
-    scale: 1,
-  };
-}
-
-function substationIcon() {
-  return {
-    path: "M 0,-10 -7,3 0,3 -3,10 8,-2 1,-2 Z",
-    fillColor: "#F2B134",
-    fillOpacity: 1,
-    strokeColor: "#3A2E10",
-    strokeWeight: 1,
     scale: 1,
   };
 }
@@ -35,20 +24,18 @@ export default function MapView({
   center,
   zoom = 19,
   houses,
-  substation,
   getColor,
   selectedIds = [],
   onHouseClick,
   editable = false,
   onMapClick,
   onHouseDrag,
-  polylines = [],
 }) {
   const { isLoaded, loadError } = useJsApiLoader({
     id: "linecut-google-map",
     googleMapsApiKey: apiKey || "",
   });
-  const [map, setMap] = useState(null);
+  const [, setMap] = useState(null);
 
   const onLoad = useCallback((m) => setMap(m), []);
   const onUnmount = useCallback(() => setMap(null), []);
@@ -92,27 +79,37 @@ export default function MapView({
           clickableIcons: false,
         }}
       >
-        {polylines.map((pl, i) => (
-          <Polyline
-            key={i}
-            path={pl.path}
-            options={{ strokeColor: pl.color, strokeOpacity: pl.opacity ?? 0.8, strokeWeight: 2 }}
-          />
-        ))}
-        {substation && (
-          <Marker position={substation} icon={substationIcon()} title="33kV Substation" />
-        )}
-        {houses.map((h) => (
-          <Marker
-            key={h.id}
-            position={{ lat: h.lat, lng: h.lng }}
-            icon={squareIcon(getColor(h), selectedIds.includes(h.id))}
-            draggable={editable}
-            title={h.name}
-            onClick={() => onHouseClick && onHouseClick(h)}
-            onDragEnd={(e) => onHouseDrag && onHouseDrag(h.id, { lat: e.latLng.lat(), lng: e.latLng.lng() })}
-          />
-        ))}
+        {houses.map((h) => {
+          const color = getColor(h);
+          const selected = selectedIds.includes(h.id);
+          if (h.polygon && h.polygon.length > 2) {
+            return (
+              <Polygon
+                key={h.id}
+                paths={h.polygon}
+                onClick={() => onHouseClick && onHouseClick(h)}
+                options={{
+                  fillColor: color,
+                  fillOpacity: 0.62,
+                  strokeColor: selected ? "#1D6FA5" : "#4B5B68",
+                  strokeWeight: selected ? 3 : 1.2,
+                  clickable: !!onHouseClick,
+                }}
+              />
+            );
+          }
+          return (
+            <Marker
+              key={h.id}
+              position={{ lat: h.lat, lng: h.lng }}
+              icon={squareIcon(color, selected)}
+              draggable={editable}
+              title={h.name}
+              onClick={() => onHouseClick && onHouseClick(h)}
+              onDragEnd={(e) => onHouseDrag && onHouseDrag(h.id, { lat: e.latLng.lat(), lng: e.latLng.lng() })}
+            />
+          );
+        })}
       </GoogleMap>
     </div>
   );
