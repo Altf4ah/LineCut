@@ -55,21 +55,21 @@ export default function MapView({
 
   if (!apiKey) {
     return (
-      <div className="w-full h-full flex items-center justify-center text-center p-6 text-sm" style={{ background: "#0E1620", color: "#8FA1B0" }}>
+      <div className="w-full h-full flex items-center justify-center text-center p-6 text-sm" style={{ background: "#F1F4F7", color: "#64748B" }}>
         Add a Google Maps API key (VITE_GOOGLE_MAPS_API_KEY in .env) to show the live map.
       </div>
     );
   }
   if (loadError) {
     return (
-      <div className="w-full h-full flex items-center justify-center p-6 text-sm" style={{ background: "#0E1620", color: "#E4572E" }}>
+      <div className="w-full h-full flex items-center justify-center p-6 text-sm" style={{ background: "#FBE4DC", color: "#C13F1F" }}>
         Couldn't load Google Maps — check that your API key is valid and the Maps JavaScript API is enabled.
       </div>
     );
   }
   if (!isLoaded) {
     return (
-      <div className="w-full h-full flex items-center justify-center p-6 text-sm" style={{ background: "#0E1620", color: "#8FA1B0" }}>
+      <div className="w-full h-full flex items-center justify-center p-6 text-sm" style={{ background: "#F1F4F7", color: "#64748B" }}>
         Loading map…
       </div>
     );
