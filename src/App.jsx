@@ -49,6 +49,47 @@ function houseCenter(h) {
   return h.polygon?.length ? centroid(h.polygon) : { lat: h.lat, lng: h.lng };
 }
 
+// ---------- Live clock ----------
+function useNow() {
+  const [now, setNow] = useState(new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  return now;
+}
+
+function formatTime(date, timeZone) {
+  return new Intl.DateTimeFormat("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true, timeZone }).format(date);
+}
+function formatShortTime(date) {
+  return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", hour12: true }).format(date);
+}
+
+const WORLD_CLOCKS = [
+  { label: "Kochi", timeZone: "Asia/Kolkata" },
+  { label: "Dubai", timeZone: "Asia/Dubai" },
+  { label: "London", timeZone: "Europe/London" },
+  { label: "New York", timeZone: "America/New_York" },
+];
+
+function GlobalTimeStrip() {
+  const now = useNow();
+  return (
+    <div style={{ background: "#0000001f" }}>
+      <div className="max-w-6xl mx-auto px-4 py-1.5 flex items-center gap-4 overflow-x-auto">
+        {WORLD_CLOCKS.map((c) => (
+          <span key={c.label} className="flex items-center gap-1.5 text-[11px] whitespace-nowrap" style={{ color: "#CFE0EC" }}>
+            <Clock size={11} />
+            <span className="font-medium">{c.label}</span>
+            <span style={{ fontVariantNumeric: "tabular-nums" }}>{formatTime(now, c.timeZone)}</span>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ---------- small building blocks ----------
 function StatCard({ icon, label, value, tone }) {
   return (
@@ -194,6 +235,7 @@ function Header({ view, setView }) {
   ];
   return (
     <header style={{ background: `linear-gradient(120deg, ${COLORS.headerBg}, ${COLORS.headerBgAlt})` }}>
+      <GlobalTimeStrip />
       <div className="max-w-6xl mx-auto px-4 py-3.5 flex items-center justify-between gap-4">
         <button onClick={() => setView("home")} className="flex items-center gap-2 shrink-0">
           <span className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "#ffffff22" }}>
@@ -318,7 +360,9 @@ function ResidentView({ houses, residentId, setResidentId, onReport, onRestore, 
             </div>
           ) : (
             <p className="text-sm mb-4" style={{ color: COLORS.textDim }}>
-              {house.status === "red" ? "Your report is visible to KSEB." : "If your power is out right now, report it below."}
+              {house.status === "red"
+                ? `Your report is visible to KSEB${house.reportedAt ? ` — reported at ${formatShortTime(new Date(house.reportedAt))}` : ""}.`
+                : "If your power is out right now, report it below."}
             </p>
           )}
 
@@ -496,6 +540,7 @@ function ManageView({ houses, onSchedule, onClear, onSimulateDevice, onAddHouse,
                       <span className="w-2 h-2 rounded-sm inline-block" style={{ background: statusFill(h.status), border: `1px solid ${COLORS.border}` }} />
                       {h.name}
                       {!h.polygon && <span className="text-[10px]" style={{ color: COLORS.textDim }}>(marker)</span>}
+                      {h.status === "red" && h.reportedAt && <span className="text-[10px]" style={{ color: COLORS.textDim }}>· {formatShortTime(new Date(h.reportedAt))}</span>}
                     </span>
                     <span className="flex items-center gap-2">
                       {h.incidents?.length > 0 && <button onClick={(e) => { e.stopPropagation(); setViewingIncidentsOf(h.id); }}><Camera size={12} color={COLORS.accent} /></button>}
@@ -566,8 +611,8 @@ export default function App() {
           houses={houses}
           residentId={residentId}
           setResidentId={setResidentId}
-          onReport={(id) => updateHouse(id, { status: "red" })}
-          onRestore={(id) => updateHouse(id, { status: "normal" })}
+          onReport={(id) => updateHouse(id, { status: "red", reportedAt: Date.now() })}
+          onRestore={(id) => updateHouse(id, { status: "normal", reportedAt: undefined })}
           onAddIncident={(id, photo) => setHouses((hs) => hs.map((h) => (h.id === id ? { ...h, incidents: [...(h.incidents || []), photo] } : h)))}
         />
       )}
@@ -575,9 +620,9 @@ export default function App() {
       {view === "manage" && (
         <ManageView
           houses={houses}
-          onSchedule={(ids, time) => updateMany(ids, { status: "yellow", maintenanceTime: time })}
-          onClear={(ids) => updateMany(ids, { status: "normal", maintenanceTime: undefined })}
-          onSimulateDevice={(id) => updateHouse(id, { status: "red" })}
+          onSchedule={(ids, time) => updateMany(ids, { status: "yellow", maintenanceTime: time, scheduledAt: Date.now() })}
+          onClear={(ids) => updateMany(ids, { status: "normal", maintenanceTime: undefined, scheduledAt: undefined, reportedAt: undefined })}
+          onSimulateDevice={(id) => updateHouse(id, { status: "red", reportedAt: Date.now() })}
           onAddHouse={(house) => setHouses((hs) => [...hs, house])}
           onMoveHouse={(id, pos) => updateHouse(id, pos)}
           onDelete={(id) => setHouses((hs) => hs.filter((h) => h.id !== id))}
