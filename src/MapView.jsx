@@ -46,7 +46,7 @@ export default function MapView({
 }) {
   const { isLoaded, loadError } = useJsApiLoader({
     id: "linecut-google-map",
-    googleMapsApiKey: apiKey || "",
+    googleMapsApiKey: apiKey || "AIzaSyCyqn2kUpF0-yb_zflx2sXoJXcL4iSwZnU",
   });
   const [map, setMap] = useState(null);
 
